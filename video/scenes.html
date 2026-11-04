@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Newton video scenes</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<style>
+/* Scenes for the demo video, recorded by video/record.mjs at 1920x1080. Same tokens as web/index.html. */
+:root {
+  --slate: #18201e; --panel: #212b28; --line: #34413d; --chalk: #e9efea; --muted: #94a49d;
+  --predict: #5cc8ff; --actual: #ff7a6b; --whatif: #c3a6ff; --ok: #7fe0a8;
+}
+* { box-sizing: border-box; margin: 0; }
+html, body { width: 1920px; height: 1080px; overflow: hidden; background: var(--slate); color: var(--chalk);
+  font-family: Archivo, sans-serif; }
+.scene { position: absolute; inset: 0; display: none; }
+.scene.on { display: block; }
+.in { opacity: 0; transform: translateY(14px); transition: opacity .6s ease, transform .6s ease; }
+.in.show { opacity: 1; transform: none; }
+
+/* title */
+#title { display: none; place-items: center; }
+#title.on { display: grid; }
+.wordmark { font-size: 230px; font-weight: 800; font-stretch: 125%; letter-spacing: -6px; line-height: .9; }
+.sub { font-size: 46px; font-weight: 400; color: var(--muted); margin-top: 34px; max-width: 1200px; line-height: 1.25; }
+.sub b { color: var(--chalk); font-weight: 600; }
+.title-wrap { text-align: left; }
+.arcline { margin-top: 44px; height: 4px; width: 0; background: var(--predict);
+  transition: width 1.4s ease; border-radius: 2px; }
+.arcline.show { width: 520px; }
+
+/* pipeline */
+#pipe canvas { position: absolute; left: 80px; top: 120px; width: 1140px; height: 863px; border-radius: 10px; }
+.side { position: absolute; left: 1290px; top: 120px; width: 560px; }
+.step { margin-bottom: 54px; opacity: .25; transition: opacity .5s; }
+.step.show { opacity: 1; }
+.step .who { font-size: 24px; color: var(--predict); font-weight: 600; margin-bottom: 10px; font-stretch: 110%; }
+.step h3 { font-size: 46px; font-weight: 700; line-height: 1.08; font-stretch: 95%; }
+.step p { font-size: 27px; color: var(--muted); margin-top: 12px; line-height: 1.35; }
+.step p strong { color: var(--chalk); font-weight: 600; }
+.scenehead { position: absolute; left: 80px; top: 48px; font-size: 30px; color: var(--muted); font-weight: 500; }
+
+/* agent */
+.thumbs { position: absolute; left: 80px; top: 150px; width: 470px; }
+.thumbs figure { position: relative; margin-bottom: 22px; }
+.thumbs img { width: 470px; height: 178px; object-fit: cover; object-position: 30% 35%; border-radius: 8px; display: block;
+  border: 2px solid var(--line); }
+.thumbs figcaption { font-size: 22px; color: var(--muted); margin-top: 6px; }
+.thumbs .dropped img { border-color: var(--actual); filter: grayscale(.6) brightness(.7); }
+.thumbs .dropped figcaption { color: var(--actual); }
+.loop { position: absolute; left: 640px; top: 150px; width: 1200px; }
+.card { background: var(--panel); border: 2px solid var(--line); border-radius: 14px; padding: 28px 34px; margin-bottom: 26px;
+  transition: border-color .4s; }
+.card.live { border-color: var(--predict); }
+.card.critic.live { border-color: var(--actual); }
+.card .role { display: flex; align-items: baseline; gap: 18px; font-size: 36px; font-weight: 700; font-stretch: 105%; }
+.card .role span { font-size: 23px; font-weight: 500; color: var(--muted); font-stretch: 100%; }
+.card .say { font-size: 29px; line-height: 1.35; margin-top: 14px; min-height: 40px; color: var(--chalk); }
+.card.planner .role { color: var(--predict); }
+.card.critic .role { color: var(--actual); }
+.card.tool .role { color: var(--chalk); }
+.chips { display: flex; gap: 14px; margin-top: 18px; flex-wrap: wrap; }
+.chip { font-size: 23px; padding: 7px 18px; border-radius: 999px; border: 2px solid var(--line); color: var(--muted); transition: all .4s; }
+.chip.hit { border-color: var(--ok); color: var(--slate); background: var(--ok); font-weight: 600; }
+.verdict { font-size: 30px; color: var(--ok); font-weight: 600; margin-top: 8px; }
+
+/* outro */
+#outro .frame { position: absolute; left: 140px; top: 150px; width: 1640px; }
+.claim { font-size: 64px; font-weight: 700; line-height: 1.1; font-stretch: 95%; max-width: 1400px; }
+.claim em { font-style: normal; color: var(--predict); }
+.results { display: grid; grid-template-columns: auto auto; gap: 16px 60px; margin-top: 56px; font-size: 34px; width: max-content; }
+.results dt { color: var(--muted); }
+.results dd { font-weight: 700; color: var(--chalk); text-align: right; font-variant-numeric: tabular-nums; }
+.next { font-size: 44px; margin-top: 70px; color: var(--muted); }
+.next b { color: var(--chalk); font-weight: 600; }
+.end { position: absolute; inset: 0; background: var(--slate); display: grid; place-items: center; opacity: 0; transition: opacity .8s; }
+.end.show { opacity: 1; }
+.end .wordmark { font-size: 150px; }
+.end .repo { font-size: 44px; color: var(--predict); margin-top: 26px; font-weight: 600; }
+.end .credits { font-size: 24px; color: var(--muted); margin-top: 60px; line-height: 1.6; max-width: 1300px; }
+</style>
+</head>
+<body>
+
+<section class="scene" id="title">
+  <div class="title-wrap">
+    <div class="wordmark in" data-at="0">Newton</div>
+    <div class="arcline" data-at="0.4"></div>
+    <p class="sub in" data-at="0.8">Film a throw. Newton works out the physics from <b>the first quarter-second of flight</b> and marks where the ball will land, before it lands.</p>
+  </div>
+</section>
+
+<section class="scene" id="pipe">
+  <div class="scenehead">Real toss, 30 fps. Open Source Physics Tracker sample clip.</div>
+  <canvas id="pipeCanvas" width="1140" height="863"></canvas>
+  <div class="side">
+    <div class="step" data-cue="0"><div class="who">SAM 3.1</div><h3>Finds the ball in every frame</h3>
+      <p>One text prompt, <strong>“white ball”</strong>. A mask and a centre for each frame.</p></div>
+    <div class="step" data-cue="1"><div class="who">Scale</div><h3>The ball is the ruler</h3>
+      <p>Mask <strong id="pxAcross">10.9 px</strong> across, ball <strong>2.75 cm</strong>: <strong id="cmpx">0.2515 cm per pixel</strong>.
+      The meter stick in the shot says <strong>0.2500</strong>.</p></div>
+    <div class="step" data-cue="2"><div class="who">Causal cutoff</div><h3>Only the first quarter-second</h3>
+      <p>Frames <strong id="fitRange">10–18</strong> go to the models. Everything after stays hidden until the reveal.</p></div>
+  </div>
+</section>
+
+<section class="scene" id="agent">
+  <div class="scenehead">How Newton reasoned on the real toss. Live model output.</div>
+  <div class="thumbs">
+    <figure class="in" data-cue="1" id="k0"><figcaption></figcaption></figure>
+    <figure class="in" data-cue="1" id="k1"><figcaption></figcaption></figure>
+    <figure class="in" data-cue="1" id="k2"><figcaption></figcaption></figure>
+    <figure class="in dropped" data-cue="3" id="k3"><figcaption></figcaption></figure>
+  </div>
+  <div class="loop">
+    <div class="card planner in" data-cue="0" id="cPlanner"><div class="role">Muse Spark <span>planner, Meta Model API</span></div>
+      <div class="say" data-type="planner" data-cue="1"></div></div>
+    <div class="card tool in" data-cue="1" data-delay="3.2" id="cTool"><div class="role">Python <span>least-squares fit</span></div>
+      <div class="say" data-type="tool" data-cue="1" data-delay="3.4"></div></div>
+    <div class="card critic in" data-cue="0" data-delay="0.6" id="cCritic"><div class="role">Muse Spark Open <span>critic, open weights on Baseten</span></div>
+      <div class="chips"><span class="chip">drop frames</span><span class="chip">add drag</span><span class="chip">recheck scale</span><span class="chip" id="accept">accept</span></div>
+      <div class="say" data-type="critic" data-cue="3" data-delay="1.2"></div>
+      <div class="verdict in" data-cue="3" data-delay="5" id="verdict"></div></div>
+  </div>
+</section>
+
+<section class="scene" id="outro">
+  <div class="frame">
+    <p class="claim in" data-cue="0">Every prediction uses <em>only frames before the freeze</em>. The models never see the landing.</p>
+    <dl class="results in" data-cue="0" data-delay="1.5">
+      <dt>Real toss, 30 fps (Tracker sample)</dt><dd id="rReal"></dd>
+      <dt>Rendered throw, 240 fps</dt><dd id="rRend"></dd>
+    </dl>
+    <p class="next in" data-cue="1">Today, a ball. Next: <b>pendulums, collisions, any experiment you can film.</b></p>
+  </div>
+  <div class="end" data-cue="end" id="end">
+    <div style="text-align:center">
+      <div class="wordmark">Newton</div>
+      <div class="repo">github.com/Vikhas/newton</div>
+      <p class="credits">SAM 3.1, Muse Spark and Muse Voice Transcribe on the Meta Model API. Muse Spark Open on Baseten.<br>
+        Sample footage: Open Source Physics Tracker. Built for the Meta Global AI Developer Hackathon.</p>
+    </div>
+  </div>
+</section>
+
+<script>
+// window.DATA = {scene, cues:[s...], end:s, real:result, rendered:result, media:"http://localhost:8811/media/<id>/"}
+const D = window.DATA;
+const el = document.getElementById(D.scene);
+el.classList.add("on");
+const cueTime = (c, delay = 0) => (c === "end" ? D.end : D.cues[+c] ?? 0) + delay;
+const fmt = (v, d) => Number(v).toFixed(d);
+const frameUrl = (f) => `${D.media}frames/${String(f).padStart(5, "0")}.jpg`;
+const R = D.real;
+
+// ---- per-scene content from the real results ----
+const imgs = {};
+async function preload(frames) {
+  await Promise.all(frames.map((f) => new Promise((ok) => {
+    const im = new Image(); im.onload = ok; im.onerror = () => { console.error("frame failed " + f); ok(); };
+    im.src = frameUrl(f); imgs[f] = im;
+  })));
+}
+const fitSet = new Set(R.fit_frames), dropped = new Set(R.dropped_frames);
+const medD = 0.01 * R.ball_diam_m * 100 / R.scale_m_per_px;
+if (D.scene === "pipe") {
+  document.getElementById("pxAcross").textContent = `${fmt(R.ball_diam_m / R.scale_m_per_px, 1)} px`;
+  document.getElementById("cmpx").textContent = `${fmt(R.scale_m_per_px * 100, 4)} cm per pixel`;
+  document.getElementById("fitRange").textContent = `${R.release_frame}–${R.cutoff_frame}`;
+}
+if (D.scene === "agent") {
+  const mid = R.fit_frames[Math.floor(R.fit_frames.length / 2)];
+  const ks = [[R.release_frame, "Release, frame " + R.release_frame], [mid, "Mid-flight, frame " + mid],
+              [R.cutoff_frame, "Cutoff, frame " + R.cutoff_frame]];
+  ks.forEach(([f, cap], i) => { const fig = document.getElementById("k" + i); fig.prepend(Object.assign(new Image(), { src: frameUrl(f), alt: cap }));
+    fig.querySelector("figcaption").textContent = cap; });
+  const d0 = R.dropped_frames[0];
+  const k3 = document.getElementById("k3");
+  if (d0 != null) { k3.prepend(Object.assign(new Image(), { src: frameUrl(d0), alt: "" }));
+    k3.querySelector("figcaption").textContent = `Frame ${d0} dropped: ball blurred behind the stick`; }
+  else k3.remove();
+  const first = (role) => (R.reasoning.find((r) => r.role === role) || {}).text || "";
+  document.querySelector('[data-type="planner"]').dataset.text = first("planner");
+  document.querySelector('[data-type="tool"]').dataset.text = first("tool");
+  document.querySelector('[data-type="critic"]').dataset.text = first("critic");
+  document.getElementById("verdict").textContent = `Accepted in round ${R.fit.rounds} of 4. Fit error ${fmt(R.fit.rms_cm, 2)} cm.`;
+}
+if (D.scene === "outro") {
+  document.getElementById("rReal").textContent = `${fmt(D.real.error_cm, 1)} cm off`;
+  document.getElementById("rRend").textContent = `${fmt(D.rendered.error_cm, 1)} cm off`;
+}
+
+// ---- timeline ----
+let t0 = null;
+const timed = [...el.querySelectorAll("[data-at],[data-cue]")];
+function step(now) {
+  const t = (now - t0) / 1000;
+  for (const n of timed) {
+    const at = n.dataset.at != null ? +n.dataset.at : cueTime(n.dataset.cue, +(n.dataset.delay || 0));
+    if (t >= at) n.classList.add("show");
+    if (n.dataset.text != null && t >= at) {
+      const chars = Math.floor((t - at) * 55);
+      n.textContent = n.dataset.text.slice(0, chars);
+    }
+  }
+  if (D.scene === "agent") {
+    document.getElementById("cPlanner").classList.toggle("live", t >= cueTime(1) && t < cueTime(1, 3.2));
+    document.getElementById("cCritic").classList.toggle("live", t >= cueTime(2));
+    document.querySelectorAll("#cCritic .chip").forEach((c, i) => c.classList.toggle("hit",
+      t >= cueTime(2, 1.2 + 0.9 * i) && t < cueTime(2, 2.1 + 0.9 * i) && c.id !== "accept"));
+    if (t >= cueTime(3, 5)) document.getElementById("accept").classList.add("hit");
+  }
+  requestAnimationFrame(step);
+  if (D.scene === "pipe") drawPipe(t);
+}
+
+// ---- pipeline canvas ----
+const cv = document.getElementById("pipeCanvas"), cx = cv ? cv.getContext("2d") : null;
+function drawPipe(t) {
+  const k = cv.width / R.width;
+  const track = R.track;
+  const c1 = cueTime(1), c2 = cueTime(2);
+  let frame;
+  if (t < c1) {           // play the clip at 6 fps, masks appear frame by frame
+    const span = track[track.length - 1].frame - 6;
+    frame = Math.min(6 + Math.floor(t * 6) % (span + 4), track[track.length - 1].frame);
+  } else if (t < c2) frame = R.release_frame + 2;
+  else frame = R.cutoff_frame;
+  const im = imgs[frame];
+  if (im && im.naturalWidth) cx.drawImage(im, 0, 0, cv.width, cv.height);
+  cx.fillStyle = "rgba(15,21,19,.35)"; cx.fillRect(0, 0, cv.width, cv.height);
+  const outline = (p, color, w) => {
+    if (!p.contour || !p.contour.length) return;
+    cx.beginPath(); p.contour.forEach(([x, y], i) => (i ? cx.lineTo(x * k, y * k) : cx.moveTo(x * k, y * k)));
+    cx.closePath(); cx.strokeStyle = color; cx.lineWidth = w; cx.stroke();
+  };
+  if (t < c1) {
+    for (const p of track) if (p.frame <= frame) {
+      cx.beginPath(); cx.arc(p.x * k, p.y * k, 5, 0, 7); cx.fillStyle = "#5cc8ff"; cx.fill();
+      if (p.frame === frame) { outline(p, "#5cc8ff", 3); label(`frame ${p.frame}`, p.x * k + 24, p.y * k - 18); }
+    }
+  } else if (t < c2) {    // zoom inset on the ball: its own diameter is the ruler
+    const p = track.find((q) => q.frame === frame);
+    outline(p, "#5cc8ff", 3);
+    const z = 9, w = 300, sx = p.x - w / z / 2, sy = p.y - w / z / 2;
+    const ix = 700, iy = 80;
+    cx.imageSmoothingEnabled = false;
+    cx.drawImage(imgs[frame], sx, sy, w / z, w / z, ix, iy, w, w);
+    cx.imageSmoothingEnabled = true;
+    cx.strokeStyle = "#5cc8ff"; cx.lineWidth = 2; cx.strokeRect(ix, iy, w, w);
+    cx.beginPath(); cx.moveTo(p.x * k, p.y * k); cx.lineTo(ix, iy + w); cx.globalAlpha = .5; cx.stroke(); cx.globalAlpha = 1;
+    const dpx = R.ball_diam_m / R.scale_m_per_px;
+    const cxm = ix + w / 2, cym = iy + w / 2, half = dpx * z / 2;
+    cx.beginPath(); cx.arc(cxm + (p.x - (sx + w / z / 2)) * z, cym + (p.y - (sy + w / z / 2)) * z, half, 0, 7);
+    cx.strokeStyle = "#5cc8ff"; cx.lineWidth = 3; cx.stroke();
+    const yb = iy + w + 34;
+    cx.beginPath(); cx.moveTo(cxm - half, yb); cx.lineTo(cxm + half, yb); cx.moveTo(cxm - half, yb - 10); cx.lineTo(cxm - half, yb + 10);
+    cx.moveTo(cxm + half, yb - 10); cx.lineTo(cxm + half, yb + 10); cx.stroke();
+    label("2.75 cm", cxm, yb + 40, "center");
+  } else {                // causal cutoff: what the models get vs what stays hidden
+    for (const p of track) {
+      const seen = p.frame >= R.release_frame && p.frame <= R.cutoff_frame;
+      cx.beginPath(); cx.arc(p.x * k, p.y * k, seen ? 7 : 6, 0, 7);
+      if (seen && !dropped.has(p.frame)) { cx.fillStyle = "#5cc8ff"; cx.fill(); }
+      else if (dropped.has(p.frame)) { cx.strokeStyle = "#ff7a6b"; cx.lineWidth = 2.5; cx.stroke(); }
+      else { cx.strokeStyle = "rgba(233,239,234,.35)"; cx.lineWidth = 2; cx.setLineDash([3, 4]); cx.stroke(); cx.setLineDash([]); }
+    }
+    const pc = track.find((q) => q.frame === R.cutoff_frame);
+    label(`cutoff, frame ${R.cutoff_frame}`, pc.x * k + 24, pc.y * k - 44);
+    const last = track[track.length - 1];
+    label("hidden from the models", last.x * k - 40, last.y * k - 150, "right", "rgba(233,239,234,.7)");
+    const pd = track.find((q) => dropped.has(q.frame));
+    if (pd) label(`frame ${pd.frame} blurred, dropped`, pd.x * k - 60, pd.y * k + 100, "center", "#ff7a6b");
+  }
+}
+function label(text, x, y, align = "left", color = "#e9efea") {
+  cx.font = "600 26px Archivo, sans-serif"; cx.textAlign = align;
+  const w = cx.measureText(text).width, x0 = align === "left" ? x : align === "center" ? x - w / 2 : x - w;
+  cx.fillStyle = "rgba(15,21,19,.8)"; cx.fillRect(x0 - 10, y - 26, w + 20, 38);
+  cx.fillStyle = color; cx.fillText(text, x, y);
+}
+
+window.READY = (async () => {
+  await document.fonts.ready;
+  if (D.scene === "pipe") await preload(R.track.map((p) => p.frame).concat([6, 7, 8, 9]));
+  if (D.scene === "agent") await preload([...new Set([R.release_frame, R.cutoff_frame, ...R.fit_frames, ...R.dropped_frames])]);
+  if (D.scene === "pipe") drawPipe(0);
+  return true;
+})();
+window.start = () => { t0 = performance.now(); requestAnimationFrame(step); };
+</script>
+</body>
+</html>

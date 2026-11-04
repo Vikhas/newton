@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+python-multipart
+numpy
+scipy
+opencv-python-headless
+httpx
+python-dotenv
+matplotlib
+pytest
+imageio-ffmpeg
+openai
+meta_sam_parser

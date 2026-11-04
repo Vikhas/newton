@@ -1,0 +1,673 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Newton</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,300..800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --slate: #18201e;
+  --panel: #212b28;
+  --line: #34413d;
+  --chalk: #e9efea;
+  --muted: #94a49d;
+  --predict: #5cc8ff;
+  --actual: #ff7a6b;
+  --whatif: #c3a6ff;
+  --warn: #f2b544;
+  --radius-stage: 10px;
+  --radius-control: 6px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--slate);
+  color: var(--chalk);
+  font-family: "Archivo", system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 1.5;
+  font-variant-numeric: tabular-nums;
+  min-height: 100vh;
+}
+button, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--predict); outline-offset: 2px; }
+
+.top {
+  display: flex; align-items: baseline; gap: 20px; flex-wrap: wrap;
+  padding: 18px 24px 14px;
+}
+.wordmark {
+  font-weight: 800; font-size: 26px; letter-spacing: -0.01em;
+  font-variation-settings: "wdth" 72;
+  margin: 0;
+}
+.tagline { color: var(--muted); margin: 0; }
+.cutoff-label {
+  margin-left: auto; color: var(--predict); font-weight: 600;
+  opacity: 0; transition: opacity .3s;
+}
+.cutoff-label.on { opacity: 1; }
+
+.layout {
+  display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px;
+  padding: 0 24px 32px;
+}
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; padding: 0 16px 24px; } .top { padding: 16px; } }
+
+.stage {
+  position: relative; background: #0f1513; border-radius: var(--radius-stage); overflow: hidden;
+  aspect-ratio: 16 / 9; border: 1px solid var(--line);
+  --ar: 1.7778;
+  width: min(100%, calc(70vh * var(--ar)));
+}
+.stage video, .stage canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block;
+}
+.stage canvas.clickable { cursor: crosshair; }
+
+.drop {
+  position: absolute; inset: 0; display: grid; place-content: center; text-align: center; gap: 10px;
+  border: 2px dashed var(--line); border-radius: var(--radius-stage); margin: 14px; cursor: pointer;
+  transition: border-color .2s, background .2s;
+}
+.drop:hover, .drop.over { border-color: var(--predict); background: rgba(92, 200, 255, .04); }
+.drop strong { font-size: 20px; font-weight: 700; }
+.drop span { color: var(--muted); max-width: 44ch; }
+
+.readout {
+  position: absolute; left: 18px; bottom: 16px; pointer-events: none;
+  background: rgba(15, 21, 19, .78); backdrop-filter: blur(6px);
+  border-radius: 8px; padding: 10px 16px 12px; opacity: 0; transform: translateY(6px);
+  transition: opacity .35s, transform .35s;
+}
+.readout.on { opacity: 1; transform: none; }
+.readout .err {
+  font-size: clamp(40px, 6vw, 72px); line-height: .95; font-weight: 800;
+  font-variation-settings: "wdth" 66; color: var(--chalk);
+}
+.readout .err small { font-size: .45em; font-weight: 600; color: var(--muted); margin-left: 4px; }
+.readout .detail { color: var(--muted); font-size: 14px; margin-top: 4px; }
+.readout .detail b { font-weight: 600; }
+.readout .detail .p { color: var(--predict); }
+.readout .detail .a { color: var(--actual); }
+
+.ghost-chip {
+  position: absolute; right: 16px; top: 14px; background: rgba(15, 21, 19, .78); color: var(--whatif);
+  border-radius: 999px; padding: 4px 12px; font-weight: 600; display: none;
+}
+.ghost-chip.on { display: block; }
+
+.bar { height: 3px; background: var(--line); border-radius: 2px; margin-top: 10px; overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--predict); transition: width .3s; }
+
+.strip {
+  display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-top: 14px; min-height: 40px;
+}
+.step { color: var(--muted); }
+.step.now { color: var(--chalk); font-weight: 600; }
+.step.done { text-decoration: line-through; text-decoration-color: var(--line); }
+.field { display: flex; align-items: center; gap: 8px; color: var(--muted); }
+.field input {
+  width: 76px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius-control);
+  padding: 6px 8px; color: var(--chalk);
+}
+.btn {
+  background: var(--chalk); color: var(--slate); border: 0; border-radius: var(--radius-control);
+  padding: 8px 16px; font-weight: 700; cursor: pointer;
+}
+.btn:disabled { opacity: .35; cursor: default; }
+.btn.quiet { background: transparent; color: var(--chalk); border: 1px solid var(--line); font-weight: 600; }
+.status { color: var(--muted); }
+.status.error { color: var(--actual); }
+.spacer { flex: 1; }
+
+.askbar { display: none; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+.askbar.on { display: flex; }
+.mic {
+  display: inline-flex; align-items: center; gap: 8px; background: var(--whatif); color: var(--slate);
+  border: 0; border-radius: 999px; padding: 9px 18px 9px 14px; font-weight: 700; cursor: pointer;
+  user-select: none; -webkit-user-select: none; touch-action: none;
+}
+.mic .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--slate); }
+.mic.rec .dot { background: #d6223b; animation: pulse 1s infinite; }
+@keyframes pulse { 50% { opacity: .3; } }
+.askbar input[type=text] {
+  flex: 1; min-width: 200px; background: var(--panel); border: 1px solid var(--line);
+  border-radius: var(--radius-control); padding: 8px 10px; color: var(--chalk);
+}
+.caption { width: 100%; color: var(--whatif); min-height: 1.5em; }
+
+.notes { display: flex; flex-direction: column; gap: 18px; }
+.notes h2 { font-size: 15px; font-weight: 700; margin: 0 0 8px; }
+.notes section { border-top: 1px solid var(--line); padding-top: 12px; }
+.stats { display: grid; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; }
+.stats dt { color: var(--muted); }
+.stats dd { margin: 0; text-align: right; font-weight: 600; }
+.warn { color: var(--warn); font-size: 14px; margin-top: 8px; display: none; }
+.warn.on { display: block; }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.log li { display: grid; grid-template-columns: 64px 1fr; gap: 8px; font-size: 14px; }
+.log .who { color: var(--muted); }
+.log .who.planner { color: var(--predict); }
+.log .who.critic { color: var(--actual); }
+.log .who.whatif { color: var(--whatif); }
+.log li.empty { display: block; color: var(--muted); }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="top">
+  <h1 class="wordmark">Newton</h1>
+  <p class="tagline">Predicts where a thrown ball lands, before it lands.</p>
+  <span class="cutoff-label" id="cutoffLabel"></span>
+</header>
+
+<main class="layout">
+  <div>
+    <div class="stage" id="stage">
+      <video id="video" muted playsinline preload="auto"></video>
+      <canvas id="canvas"></canvas>
+      <label class="drop" id="drop">
+        <strong>Drop a slow-motion throw here</strong>
+        <span>Film side-on from a tripod, ball flying across the frame. Or choose a file.</span>
+        <input type="file" id="file" accept="video/*" hidden>
+      </label>
+      <div class="readout" id="readout"></div>
+      <div class="ghost-chip" id="ghostChip"></div>
+    </div>
+    <div class="bar"><i id="barFill"></i></div>
+
+    <div class="strip" id="setup" hidden>
+      <span class="step" id="stepBall">Click the ball</span>
+      <span class="step" id="stepFloor">Click the floor where it will land</span>
+      <label class="field">Capture fps <input type="number" id="fps" min="1" step="1"></label>
+      <label class="field">Release frame <input type="number" id="release" min="0" step="1" placeholder="auto"></label>
+      <label class="field">Ball size <input type="number" id="ballCm" min="1" step="0.1" value="6.7"> cm</label>
+      <label class="field">Ball <input type="text" id="ballPrompt" placeholder="auto" style="width:120px"></label>
+      <span class="spacer"></span>
+      <button class="btn" id="runBtn" disabled>Predict landing</button>
+    </div>
+    <div class="strip" id="playbar" hidden>
+      <span class="status" id="status"></span>
+      <span class="spacer"></span>
+      <button class="btn quiet" id="replayBtn">Replay</button>
+      <button class="btn quiet" id="newBtn">New clip</button>
+    </div>
+
+    <div class="askbar" id="whatif">
+      <button class="mic" id="mic" aria-label="Hold to ask a what-if question"><span class="dot"></span>Hold to ask</button>
+      <input type="text" id="whatifText" placeholder="What if this were on the Moon?" aria-label="What-if question">
+      <button class="btn quiet" id="askBtn">Ask</button>
+      <button class="btn quiet quick" data-q="What if this were on the Moon?">On the Moon</button>
+      <button class="btn quiet quick" data-q="What if I threw it twice as hard?">Twice as hard</button>
+      <div class="caption" id="caption" aria-live="polite"></div>
+    </div>
+  </div>
+
+  <aside class="notes">
+    <section>
+      <h2>The throw</h2>
+      <dl class="stats" id="stats"><dt>Waiting for a clip</dt><dd></dd></dl>
+      <p class="warn" id="gWarn"></p>
+    </section>
+    <section>
+      <h2>How Newton reasoned</h2>
+      <ul class="log" id="log"><li class="empty">The planner and critic notes appear here after a run.</li></ul>
+    </section>
+  </aside>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const video = $("video"), canvas = $("canvas"), ctx = canvas.getContext("2d");
+const PLAYBACK_FPS = 30, ARC_DRAW_MS = 1200, HOLD_MS = 1600;
+
+let meta = null, clicks = {}, result = null, ghost = null;
+let phase = "idle";          // idle | setup | running | pre | frozen | post | done | ghost
+let frozenAt = 0, trackByFrame = new Map(), freezeTimer = null;
+let ghostClock = null;       // {start, startFrame, rate} once the video ends during a ghost replay
+
+// ---------- upload and setup ----------
+const drop = $("drop"), fileInput = $("file");
+["dragenter", "dragover"].forEach((e) => drop.addEventListener(e, (ev) => { ev.preventDefault(); drop.classList.add("over"); }));
+["dragleave", "drop"].forEach((e) => drop.addEventListener(e, () => drop.classList.remove("over")));
+drop.addEventListener("drop", (ev) => { ev.preventDefault(); if (ev.dataTransfer.files[0]) upload(ev.dataTransfer.files[0]); });
+fileInput.addEventListener("change", () => fileInput.files[0] && upload(fileInput.files[0]));
+
+async function upload(file) {
+  drop.hidden = true;
+  showStatus("Reading frames from the clip…");
+  $("playbar").hidden = false;
+  setBar(0.05);
+  const fd = new FormData();
+  fd.append("file", file);
+  const r = await fetch("/api/clips", { method: "POST", body: fd });
+  if (!r.ok) return fail((await r.json()).detail || "Upload failed");
+  meta = await r.json();
+  setupStage(meta.width, meta.height, meta.player_url);
+  $("fps").value = Math.round(meta.capture_fps);
+  if (meta.truncated) {
+    $("playbar").hidden = false;
+    showStatus(`Only the first ${meta.n_frames} frames are used. Trim the clip to the throw if the landing is cut off.`);
+  }
+  clicks = {};
+  phase = "setup";
+  $("playbar").hidden = true;
+  $("setup").hidden = false;
+  canvas.classList.add("clickable");
+  setBar(0);
+  updateSteps();
+  draw();
+}
+
+function setupStage(w, h, src) {
+  canvas.width = w; canvas.height = h;
+  $("stage").style.aspectRatio = `${w} / ${h}`;
+  $("stage").style.setProperty("--ar", (w / h).toFixed(4));
+  video.src = src;
+  video.currentTime = 0;
+}
+
+canvas.addEventListener("click", (ev) => {
+  if (phase !== "setup") return;
+  const r = canvas.getBoundingClientRect();
+  const x = (ev.clientX - r.left) / r.width * canvas.width;
+  const y = (ev.clientY - r.top) / r.height * canvas.height;
+  if (!clicks.ball) clicks.ball = [x, y];
+  else clicks.floor = y;
+  updateSteps();
+  draw();
+});
+
+function updateSteps() {
+  $("stepBall").className = "step " + (clicks.ball ? "done" : "now");
+  $("stepFloor").className = "step " + (clicks.floor !== undefined ? "done" : clicks.ball ? "now" : "");
+  $("runBtn").disabled = !(clicks.ball && clicks.floor !== undefined);
+}
+
+$("runBtn").addEventListener("click", async () => {
+  const rel = $("release").value.trim();
+  const body = { ball_xy: clicks.ball, surface_y_px: clicks.floor, capture_fps: Number($("fps").value) || null,
+                 release_frame: rel === "" ? null : Number(rel),
+                 ball_diam_cm: Number($("ballCm").value) || null, ball_prompt: $("ballPrompt").value.trim() || null };
+  console.log("manifest entry", JSON.stringify(body));
+  phase = "running";
+  canvas.classList.remove("clickable");
+  $("setup").hidden = true;
+  $("playbar").hidden = false;
+  showStatus("Starting…");
+  const r = await fetch(`/api/clips/${meta.clip_id}/run`, {
+    method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body),
+  });
+  if (!r.ok) return fail("Could not start the run");
+  poll(meta.clip_id);
+});
+
+const STAGE_TEXT = {
+  queued: "Queued", tracking: "Tracking the ball with SAM 3.1", calibrating: "Calibrating from the ball's size",
+  fitting: "Fitting the physics", predicting: "Predicting the landing", scoring: "Measuring the real landing",
+};
+
+async function poll(id) {
+  const s = await (await fetch(`/api/clips/${id}/status`)).json();
+  if (s.stage === "error") return fail(s.message);
+  if (s.stage === "done") return loadResult(id);
+  showStatus(STAGE_TEXT[s.stage] || s.stage);
+  setBar(s.progress);
+  setTimeout(() => poll(id), 500);
+}
+
+async function loadResult(id) {
+  const r = await fetch(`/api/clips/${id}/result`);
+  if (!r.ok) return fail("No result for this clip yet");
+  result = await r.json();
+  if (!meta || meta.clip_id !== id) setupStage(result.width, result.height, result.player_url);
+  drop.hidden = true;
+  $("setup").hidden = true;
+  $("playbar").hidden = false;
+  trackByFrame = new Map(result.track.map((p) => [p.frame, p]));
+  setBar(1);
+  renderNotes();
+  $("whatif").classList.add("on");
+  history.replaceState(null, "", `?clip=${id}`);
+  startReplay();
+}
+
+// ---------- the reveal sequence ----------
+function startReplay() {
+  clearTimeout(freezeTimer);
+  ghost = null; ghostClock = null;
+  $("ghostChip").classList.remove("on");
+  $("readout").classList.remove("on");
+  $("cutoffLabel").classList.remove("on");
+  phase = "pre";
+  video.playbackRate = 1;
+  const lead = Math.round(0.15 * result.capture_fps);
+  seekFrame(Math.max(0, result.release_frame - lead));
+  video.play();
+  showStatus("Watching the first quarter-second of flight");
+}
+
+function seekFrame(f) { video.currentTime = (f + 0.5) / PLAYBACK_FPS; }
+function currentFrame() {
+  if (ghostClock) {
+    const f = ghostClock.startFrame + (performance.now() - ghostClock.start) / 1000 * ghostClock.rate * PLAYBACK_FPS;
+    return Math.min(f, ghost.landing_frame, ghostClock.startFrame + 15 * ghostClock.rate * PLAYBACK_FPS);
+  }
+  return video.currentTime * PLAYBACK_FPS;
+}
+
+function tick() {
+  if (result && phase === "pre" && currentFrame() >= result.cutoff_frame) freeze();
+  if (result && phase === "post" && result.actual && currentFrame() >= result.actual.landing_frame) reveal();
+  draw();
+  requestAnimationFrame(tick);
+}
+requestAnimationFrame(tick);
+
+function freeze() {
+  video.pause();
+  seekFrame(result.cutoff_frame);
+  phase = "frozen";
+  frozenAt = performance.now();
+  $("cutoffLabel").textContent = `Prediction made from frames ${result.release_frame}–${result.cutoff_frame} only`;
+  $("cutoffLabel").classList.add("on");
+  showStatus("Frozen. Predicting from what it has seen so far");
+  clearTimeout(freezeTimer);
+  freezeTimer = setTimeout(() => {
+    if (phase !== "frozen") return;
+    phase = "post";
+    showStatus("Now watch the real ball");
+    video.play();
+  }, ARC_DRAW_MS + HOLD_MS);
+}
+
+video.addEventListener("ended", () => {
+  if (phase === "pre") { freeze(); return; }
+  if (phase === "post" && !result.actual) { reveal(); }
+  if (phase === "ghost" && ghost && !ghostClock && currentFrame() < ghost.landing_frame) {
+    ghostClock = { start: performance.now(), startFrame: currentFrame(), rate: video.playbackRate };
+  }
+});
+
+function reveal() {
+  phase = "done";
+  const ro = $("readout");
+  const x0 = result.fit_state.x0;
+  const pred = (result.prediction.landing_x_m - x0) * 100;
+  if (result.actual) {
+    const act = (result.actual.landing_x_m - x0) * 100;
+    ro.innerHTML = `<div class="err">Off by ${fmt(result.error_cm, 1)}<small>cm</small></div>
+      <div class="detail">Predicted <b class="p">${fmt(Math.abs(pred), 1)} cm</b> out, it landed at <b class="a">${fmt(Math.abs(act), 1)} cm</b></div>`;
+    showStatus("Landed");
+  } else {
+    ro.innerHTML = `<div class="err" style="font-size:40px">Landing not visible</div>
+      <div class="detail">Predicted <b class="p">${fmt(Math.abs(pred), 1)} cm</b> out. The clip ends before the ball lands.</div>`;
+    showStatus("Clip ended before the landing");
+  }
+  ro.classList.add("on");
+}
+
+// ---------- drawing ----------
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  const k = canvas.width / canvas.getBoundingClientRect().width || 1;  // source px per CSS px
+  if (phase === "setup") return drawSetup(k);
+  if (!result) return;
+  const f = currentFrame();
+  const showPrediction = ["frozen", "post", "done", "ghost"].includes(phase);
+
+  drawTrail(f, k);
+  if (phase === "pre" || phase === "frozen") drawMask(Math.round(Math.min(f, result.cutoff_frame)), k);
+  if (showPrediction && phase !== "ghost") {
+    const prog = phase === "frozen" ? Math.min(1, (performance.now() - frozenAt) / ARC_DRAW_MS) : 1;
+    drawArc(result.prediction.arc_px.filter((p) => p[2] >= result.cutoff_frame), prog, "#5cc8ff", k);
+    if (prog >= 1) drawRing(result.prediction.landing_px, result.prediction.ring_radius_px, k, phase === "frozen");
+  }
+  if (phase === "done" && result.actual) drawCross(result.actual.landing_px, k);
+  if (phase === "ghost" && ghost) drawGhost(f, k);
+  drawFloor(result.surface_y_px, k, 0.25);
+}
+
+function drawSetup(k) {
+  if (clicks.ball) {
+    ctx.strokeStyle = "#5cc8ff"; ctx.lineWidth = 2 * k;
+    ctx.beginPath(); ctx.arc(clicks.ball[0], clicks.ball[1], 14 * k, 0, Math.PI * 2); ctx.stroke();
+  }
+  if (clicks.floor !== undefined) drawFloor(clicks.floor, k, 0.9);
+}
+
+function drawFloor(y, k, alpha) {
+  ctx.save();
+  ctx.globalAlpha = alpha; ctx.strokeStyle = "#e9efea"; ctx.lineWidth = 1.5 * k; ctx.setLineDash([8 * k, 6 * k]);
+  ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(canvas.width, y); ctx.stroke();
+  ctx.restore();
+}
+
+function drawTrail(f, k) {
+  for (const p of result.track) {
+    if (p.frame > f || p.frame < result.release_frame) continue;
+    const future = p.frame > result.cutoff_frame;
+    ctx.fillStyle = future ? "rgba(255,122,107,.85)" : "rgba(233,239,234,.75)";
+    ctx.beginPath(); ctx.arc(p.x, p.y, 2.2 * k, 0, Math.PI * 2); ctx.fill();
+  }
+}
+
+function drawMask(frame, k) {
+  const p = trackByFrame.get(frame);
+  if (!p || !p.contour || p.contour.length < 3) return;
+  ctx.save();
+  ctx.strokeStyle = "rgba(92,200,255,.95)"; ctx.lineWidth = 1.5 * k;
+  ctx.beginPath();
+  p.contour.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+  ctx.closePath(); ctx.stroke();
+  ctx.restore();
+}
+
+function drawArc(pts, prog, color, k) {
+  const n = Math.max(2, Math.floor(pts.length * prog));
+  if (pts.length < 2) return;
+  ctx.save();
+  ctx.strokeStyle = color; ctx.lineWidth = 4 * k; ctx.lineCap = "round"; ctx.lineJoin = "round";
+  ctx.shadowColor = color; ctx.shadowBlur = 14 * k;
+  ctx.beginPath();
+  for (let i = 0; i < n; i++) (i ? ctx.lineTo(pts[i][0], pts[i][1]) : ctx.moveTo(pts[i][0], pts[i][1]));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawRing([x, y], r, k, pulsing) {
+  const t = performance.now() / 1000;
+  const grow = pulsing ? 1 + 0.12 * Math.sin(t * 6) : 1;
+  ctx.save();
+  ctx.strokeStyle = "#5cc8ff"; ctx.shadowColor = "#5cc8ff"; ctx.shadowBlur = 12 * k;
+  ctx.lineWidth = 3 * k;
+  ctx.beginPath(); ctx.ellipse(x, y, Math.max(r, 10 * k) * 1.6 * grow, Math.max(r, 10 * k) * 0.55 * grow, 0, 0, Math.PI * 2); ctx.stroke();
+  ctx.lineWidth = 1.5 * k;
+  ctx.beginPath(); ctx.moveTo(x, y - 14 * k); ctx.lineTo(x, y + 14 * k); ctx.stroke();
+  ctx.restore();
+}
+
+function drawCross([x, y], k) {
+  const s = 9 * k;
+  ctx.save();
+  ctx.strokeStyle = "#ff7a6b"; ctx.lineWidth = 3 * k; ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(x - s, y - s); ctx.lineTo(x + s, y + s); ctx.moveTo(x + s, y - s); ctx.lineTo(x - s, y + s); ctx.stroke();
+  ctx.restore();
+}
+
+function ghostAt(f) {
+  const a = ghost.arc_px;
+  if (f <= a[0][2]) return null;
+  if (f >= a[a.length - 1][2]) return a[a.length - 1];
+  let i = 1;
+  while (a[i][2] < f) i++;
+  const [x0, y0, f0] = a[i - 1], [x1, y1, f1] = a[i];
+  const u = (f - f0) / (f1 - f0);
+  return [x0 + u * (x1 - x0), y0 + u * (y1 - y0), f];
+}
+
+function drawGhost(f, k) {
+  const pos = ghostAt(f);
+  if (!pos) return;
+  const path = ghost.arc_px.filter((p) => p[2] <= f).concat([pos]);
+  ctx.save();
+  ctx.strokeStyle = "rgba(195,166,255,.55)"; ctx.lineWidth = 2 * k; ctx.setLineDash([6 * k, 6 * k]);
+  ctx.beginPath(); path.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle = "#c3a6ff"; ctx.shadowColor = "#c3a6ff"; ctx.shadowBlur = 18 * k;
+  ctx.beginPath(); ctx.arc(pos[0], pos[1], Math.max(result.radius_px, 6 * k), 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+  const out = pos[0] < 0 || pos[0] > canvas.width || pos[1] < 0;
+  if (ghost.offscreen && (out || f >= ghost.landing_frame)) drawOffscreenNote(pos, k);
+}
+
+function drawOffscreenNote(pos, k) {
+  const right = ghost.landing_px[0] > canvas.width;
+  const text = `lands ${fmt(ghost.landing_distance_m, 1)} m away (real throw: ${fmt(ghost.real_distance_m, 1)} m)`;
+  ctx.save();
+  ctx.font = `600 ${16 * k}px Archivo, sans-serif`;
+  ctx.fillStyle = "#c3a6ff";
+  const y = Math.min(Math.max(pos[1], 64 * k), result.surface_y_px - 60 * k);  // stay below the what-if chip
+  if (right) {
+    ctx.textAlign = "right";
+    ctx.fillText(`${text} →`, canvas.width - 16 * k, y);
+  } else if (pos[1] < 0) {
+    ctx.textAlign = "center";
+    ctx.fillText(`↑ ${text}`, Math.min(Math.max(pos[0], 220 * k), canvas.width - 220 * k), 64 * k);
+  } else {
+    ctx.textAlign = "left";
+    ctx.fillText(`← ${text}`, 16 * k, y);
+  }
+  ctx.restore();
+}
+
+// ---------- what-if ----------
+async function askWhatIf(payload) {
+  if (!result) return;
+  $("caption").textContent = "Thinking about it…";
+  const opts = payload instanceof FormData
+    ? { method: "POST", body: payload }
+    : { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(payload) };
+  let r, data;
+  try {
+    r = await fetch(`/api/clips/${result.clip_id}/whatif`, opts);
+    data = await r.json();
+  } catch (e) {
+    $("caption").textContent = "The what-if request failed. Check that the server is running.";
+    return;
+  }
+  if (!r.ok) { $("caption").textContent = data.detail || "That didn't work."; return; }
+  $("caption").textContent = `“${data.transcript}”`;
+  ghost = data.ghost;
+  const g = data.change.g != null ? `, g = ${fmt(data.change.g, 2)} m/s²` : "";
+  const s = data.change.speed_scale != null ? `, ${fmt(data.change.speed_scale, 1)}× speed` : "";
+  $("ghostChip").textContent = `${data.label}${g}${s}`;
+  renderLog(result.reasoning.concat([{ role: "whatif",
+    text: `${data.label}: same launch${g}${s}. Lands ${fmt(ghost.landing_distance_m, 2)} m out instead of ${fmt(ghost.real_distance_m, 2)} m.` }]));
+  startGhost();
+}
+
+function startGhost() {
+  clearTimeout(freezeTimer);
+  phase = "ghost"; ghostClock = null;
+  $("readout").classList.remove("on");
+  $("cutoffLabel").classList.remove("on");
+  $("ghostChip").classList.add("on");
+  showStatus("Same throw, new physics. The violet ball is the what-if");
+  const lead = Math.round(0.15 * result.capture_fps);
+  seekFrame(Math.max(0, result.release_frame - lead));
+  video.playbackRate = Math.min(result.capture_fps / PLAYBACK_FPS, 16);  // real time
+  video.play();
+}
+
+$("askBtn").addEventListener("click", () => { const t = $("whatifText").value.trim(); if (t) askWhatIf({ text: t }); });
+$("whatifText").addEventListener("keydown", (e) => { if (e.key === "Enter") $("askBtn").click(); });
+document.querySelectorAll(".quick").forEach((b) => b.addEventListener("click", () => {
+  $("whatifText").value = b.dataset.q; askWhatIf({ text: b.dataset.q });
+}));
+
+let recorder = null, chunks = [];
+async function startRec() {
+  if (recorder) return;
+  try {
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    chunks = [];
+    recorder = new MediaRecorder(stream);
+    recorder.ondataavailable = (e) => chunks.push(e.data);
+    recorder.onstop = () => {
+      stream.getTracks().forEach((t) => t.stop());
+      const blob = new Blob(chunks, { type: recorder.mimeType || "audio/webm" });
+      recorder = null;
+      $("mic").classList.remove("rec");
+      const fd = new FormData();
+      fd.append("audio", blob, "whatif.webm");
+      askWhatIf(fd);
+    };
+    recorder.start();
+    $("mic").classList.add("rec");
+    $("caption").textContent = "Listening…";
+  } catch (e) {
+    $("caption").textContent = "Microphone unavailable. Type the question instead.";
+  }
+}
+function stopRec() { if (recorder && recorder.state === "recording") recorder.stop(); }
+const mic = $("mic");
+mic.addEventListener("pointerdown", (e) => { e.preventDefault(); startRec(); });
+["pointerup", "pointerleave", "pointercancel"].forEach((ev) => mic.addEventListener(ev, stopRec));
+mic.addEventListener("keydown", (e) => { if ((e.key === " " || e.key === "Enter") && !e.repeat) { e.preventDefault(); startRec(); } });
+mic.addEventListener("keyup", (e) => { if (e.key === " " || e.key === "Enter") stopRec(); });
+
+// ---------- notes panel ----------
+function renderNotes() {
+  const fit = result.fit;
+  const rows = [
+    ["Launch speed", `${fmt(fit.speed_mps, 2)} m/s`],
+    ["Launch angle", `${fmt(fit.angle_deg, 1)}°`],
+    ["Gravity check", `${fmt(fit.g_check, 2)} m/s²`],
+    ["Fit error", `${fmt(fit.rms_cm, 2)} cm RMS`],
+    ["Release frame", `${result.release_frame}`],
+    ["Frames used", `${result.fit_frames.length}`],
+    ["Model", fit.model === "projectile_drag" ? "Projectile with drag" : "Projectile"],
+  ];
+  $("stats").innerHTML = rows.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("");
+  const w = $("gWarn");
+  w.textContent = fit.g_warning ? `The gravity check came out at ${fmt(fit.g_check, 1)} m/s², far from 9.8. Check the ball size, the capture fps, and that the camera is square to the throw.` : "";
+  w.classList.toggle("on", fit.g_warning);
+  renderLog(result.reasoning);
+}
+
+function renderLog(lines) {
+  const label = { planner: "Planner", critic: "Critic", tool: "Tool", summary: "Summary", system: "Newton", whatif: "What-if" };
+  $("log").innerHTML = lines.map((l) =>
+    `<li><span class="who ${l.role}">${label[l.role] || l.role}</span><span>${escapeHtml(l.text)}</span></li>`).join("");
+}
+
+// ---------- misc ----------
+$("replayBtn").addEventListener("click", () => result && startReplay());
+$("newBtn").addEventListener("click", () => { location.href = "/"; });
+function showStatus(t) { const s = $("status"); s.textContent = t; s.className = "status"; }
+function fail(msg) {
+  phase = meta ? "setup" : "idle";
+  $("playbar").hidden = false;
+  const s = $("status"); s.textContent = msg; s.className = "status error";
+  if (meta) { clicks = {}; updateSteps(); draw(); $("setup").hidden = false; canvas.classList.add("clickable"); }
+  else drop.hidden = false;
+}
+function setBar(p) { $("barFill").style.width = `${Math.round(p * 100)}%`; }
+function fmt(v, d) { return Number(v).toFixed(d); }
+function escapeHtml(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+window.addEventListener("resize", draw);
+
+const q = new URLSearchParams(location.search).get("clip");
+if (q) loadResult(q);
+</script>
+</body>
+</html>

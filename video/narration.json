@@ -1,0 +1,40 @@
+{
+  "narrator": "af_heart",
+  "asker": "am_michael",
+  "speed": 1.0,
+  "scenes": [
+    {"id": "hero", "lines": [
+      "Newton just predicted where this ball would come down, before it got there.",
+      "Off by seven millimetres."
+    ]},
+    {"id": "title", "lines": [
+      "Newton learns the physics of a throw from an ordinary video, using only the first quarter second after the ball leaves the hand."
+    ]},
+    {"id": "pipeline", "lines": [
+      "First, Meta's SAM three point one finds the ball in every frame.",
+      "The ball's own size becomes the ruler. At two point seven five centimetres across, it gives a scale within one percent of the meter stick in the shot.",
+      "Then Newton cuts the track a quarter second after release. Nothing after that line reaches the models."
+    ]},
+    {"id": "reasoning", "lines": [
+      "Two Meta models then work like a physicist and a reviewer.",
+      "Muse Spark reads keyframes and the tracked path, and plans the fit. Python runs the numbers.",
+      "Muse Spark Open, the open weights model running on Base ten, critiques every fit. It can send the plan back to drop blurry frames, add drag, or recheck the scale.",
+      "Here, one frame where the ball passes behind the stick was filtered out, and the critic accepted the fit, with residuals under a millimetre."
+    ]},
+    {"id": "second", "lines": [
+      "Here's a rendered throw at two hundred and forty frames per second, where the exact answer is known.",
+      "Newton sees sixty frames, and lands within three point seven centimetres."
+    ]},
+    {"id": "whatif", "lines": [
+      "Then ask it a what if, out loud.",
+      "@ASK What if this were on the Moon?",
+      "Muse Voice Transcribe turns the question into text. Muse Spark turns the text into physics.",
+      "The same launch replays under lunar gravity, and carries almost five times as far.",
+      "Throw it twice as hard, and it goes more than three times as far."
+    ]},
+    {"id": "outro", "lines": [
+      "Every prediction comes only from frames before the freeze. The model never sees the landing.",
+      "Today, a ball. Next, pendulums, collisions, any experiment you can film."
+    ]}
+  ]
+}

@@ -1,0 +1,9 @@
+[project]
+name = "newton"
+version = "0.1.0"
+description = "Predicts where a thrown ball lands from a phone video"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

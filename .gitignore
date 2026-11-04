@@ -1,0 +1,11 @@
+cache/
+.env
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.superpowers/
+.playwright-cli/
+video/out/
+docs/design-doc.md
+docs/superpowers/
