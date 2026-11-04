@@ -4,7 +4,7 @@ Newton watches a phone video of a thrown ball and works out the physics from onl
 
 Entry for the Meta Global AI Developer Hackathon: Indie Developer track, theme *Push the Frontier*.
 
-**Demo video (2:11):** _link to be added_
+**Demo video (2:11):** _[link ](https://youtu.be/OknQUSb4C2s?si=nCqFxBmWjIrat1Af)_
 
 > **Built during the hackathon.** All code in this repository was written during the event (Oct 27 – Nov 4, 2026). The first commit is dated Nov 4, 2026; see `git log`.
 
