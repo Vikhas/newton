@@ -1,4 +1,4 @@
-"""Build SAM 3.1 Responses-API events in the real wire grammar (see docs/meta-api-notes.md)."""
+"""Build SAM 3.1 Responses-API events in the real wire grammar (as in https://github.com/meta-models/meta-model-cookbook)."""
 import json
 
 import numpy as np

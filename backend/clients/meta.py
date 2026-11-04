@@ -1,6 +1,6 @@
 """Meta Model API: Muse Spark (chat), SAM 3.1 (video segmentation), Muse Voice Transcribe.
 
-Request shapes follow Meta's cookbook; see docs/meta-api-notes.md.
+Request shapes follow Meta's cookbook: https://github.com/meta-models/meta-model-cookbook
 """
 import asyncio
 import base64

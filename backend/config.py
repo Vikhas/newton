@@ -19,7 +19,7 @@ BLUR_JUMP = 0.30           # drop frames whose mask area jumps more than this
 G_SANE = (8.5, 11.0)
 MAX_FRAMES = 1500          # ~6 s at 240 fps; longer clips are cut and flagged
 
-# Model endpoints (see docs/meta-api-notes.md). Each can be overridden by an env var of the same name.
+# Model endpoints (per https://github.com/meta-models/meta-model-cookbook). Each can be overridden by an env var of the same name.
 META_BASE_URL = os.getenv("META_BASE_URL", "https://api.meta.ai/v1")
 META_ASR_URL = os.getenv("META_ASR_URL", "https://api.meta.ai/v1/asr/transcribe")
 SAM_MODEL = os.getenv("SAM_MODEL", "sam-3.1")
